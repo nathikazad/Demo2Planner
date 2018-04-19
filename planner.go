@@ -5,17 +5,18 @@ import (
 	"log"
 	"strings"
 	"strconv"
+	"math"
+	"Demo2Planner/dijkstra"
 	"fmt"
 )
 
 type Point struct {
+	id uint
 	x uint
 	y  uint
+	adjacent_points []uint
 }
-type Edge struct {
-	start Point
-	end  Point
-}
+
 
 
 func check(e error) {
@@ -27,14 +28,30 @@ func check(e error) {
 func main() {
 
 
-	edges := readInputsFromFile("4by4.map")
-	fmt.Printf("%d %d %d %d\n", edges[0].start.x, edges[0].start.y, edges[0].end.x, edges[0].end.y)
+	points := readInputsFromFile("4by4.map")
+	graph:=dijkstra.NewGraph()
+	for k ,_ := range points {
+		graph.AddVertex(int(k))
+	}
+
+	for index , point := range points {
+		for _, a_point := range point.adjacent_points {
+			distance := int64(point.Distance(points[a_point]))
+			graph.AddArc(int(index), int(a_point), distance)
+		}
+	}
+
+	best, err := graph.Shortest(18,26)
+	if err!=nil{
+		log.Fatal(err)
+	}
+	fmt.Println("Shortest distance ", best.Distance, " following path ", best.Path)
+
 
 }
 
-func readInputsFromFile(filename string) ([]Edge) {
-	var points []Point
-	var edges []Edge
+func readInputsFromFile(filename string) (map[uint]Point) {
+	points := make(map[uint]Point)
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -44,40 +61,23 @@ func readInputsFromFile(filename string) ([]Edge) {
 
 	scanner := bufio.NewScanner(file)
 
-	scanner.Scan()
-	numOfPoints, numOfEdges := splitCommaSepNumbers(scanner.Text())
-
-
-	for i := uint(0); i < numOfPoints; i++ {
-		scanner.Scan()
-		x, y := splitCommaSepNumbers(scanner.Text())
-		newPoint := Point{x: x, y: y}
-		points = append(points, newPoint)
-	}
-
-	if len(points) != int(numOfPoints) {
-		log.Fatalf("given number of points %d not equal to observed number of points %d", numOfPoints, len(points))
-	}
-	for i := uint(0); i < numOfEdges; i++ {
-		scanner.Scan()
-		startPointIndex, endPointIndex := splitCommaSepNumbers(scanner.Text())
-		if startPointIndex >= numOfPoints || endPointIndex >= numOfPoints {
-			log.Fatalf("%d or %d greater than or equal to length of points %d", startPointIndex, endPointIndex, len(points))
-		} else {
-			newEdge := Edge{start: points[startPointIndex], end: points[endPointIndex]}
-			edges = append(edges, newEdge)
+	for scanner.Scan() {
+		line :=strings.Split(scanner.Text()," ")
+		index, _ := strconv.Atoi(line[0])
+		x, y := splitCommaSepNumbers(line[1])
+		adjacent_points := []uint{}
+		for _, point := range line[2:] {
+			temp, _ := strconv.Atoi(point)
+			adjacent_points = append(adjacent_points, uint(temp))
 		}
-
-	}
-	if len(edges) != int(numOfEdges) {
-		log.Fatalf("given number of edges %d not equal to observed number of points %d", numOfEdges, len(edges))
+		points[uint(index)] = Point{x: x, y: y, adjacent_points:adjacent_points}
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 
-	return edges
+	return points
 }
 
 func splitCommaSepNumbers(line string) (uint, uint) {
@@ -96,15 +96,16 @@ func splitCommaSepNumbers(line string) (uint, uint) {
 	return uint(numberOne), uint(numberTwo)
 }
 
-// for Michael Erberich
-func planPath(startEdgeIndex uint, endEdgeIndex uint, edges [ ]Edge)  ([]Edge) {
-	var path []Edge
-	return path
-}
 
-// for Austin
-func findClosestEdgeToPoint(randomPoint Point, edges Edge[]) (Point, Edge) {
-	var closestEdge Edge
-	var closestPointOnEdge Point
-	return closestPointOnEdge, closestEdge
+//// TODO
+//func findClosestEdgeToPoint(randomPoint Point, edges []Edge) (Point, Edge) {
+//	var closestEdge Edge
+//	var closestPointOnEdge Point
+//	return closestPointOnEdge, closestEdge
+//}
+
+func (p Point) Distance(p2 Point) float64 {
+	first := math.Pow(float64(p2.x)-float64(p.x), 2)
+	second := math.Pow(float64(p2.y)-float64(p.y), 2)
+	return math.Sqrt(first + second)
 }
